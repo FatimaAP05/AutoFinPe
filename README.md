@@ -8,8 +8,8 @@ AutoFinPe es una plataforma integral para la gestión y simulación de créditos
 | Recurso |	Enlace |
 |---------|--------|
 | 🌐 Aplicación |	[https://feisty-youthfulness-production.up.railway.app/login](https://feisty-youthfulness-production.up.railway.app/login) |
-| 📚 Swagger API |	[https://autofinpe-production.up.railway.app/api/v3/api-doc](https://autofinpe-production.up.railway.app/api/v3/api-doc) |
-| 📄 OpenAPI |	[https://autofinpe-production.up.railway.app/](https://autofinpe-production.up.railway.app/) |
+| 📚 Swagger API |	[https://autofinpe-production.up.railway.app/api/swagger-ui/index.html](https://autofinpe-production.up.railway.app/api/swagger-ui/index.html) |
+| 📄 OpenAPI |	[https://autofinpe-production.up.railway.app/api/v3/api-doc](https://autofinpe-production.up.railway.app/api/v3/api-doc) |
 
 ## Tecnologías Utilizadas
 
