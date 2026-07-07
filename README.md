@@ -11,20 +11,6 @@ AutoFinPe es una plataforma integral para la gestión y simulación de créditos
 | 📚 Swagger API |	[https://autofinpe-production.up.railway.app/api/v3/api-doc](https://autofinpe-production.up.railway.app/api/v3/api-doc) |
 | 📄 OpenAPI |	[https://autofinpe-production.up.railway.app/](https://autofinpe-production.up.railway.app/) |
 
-## Credenciales de demostración
-
-**Usuario**
-
-```text
-admin
-```
-
-**Contraseña**
-
-```text
-Admin123!
-```
-
 ## Tecnologías Utilizadas
 
 Este proyecto está construido como un monorepo, compuesto por un backend robusto y un frontend moderno.
@@ -158,10 +144,3 @@ Puedes utilizar las siguientes credenciales para iniciar sesión en la aplicaci�
     -   **Login:** `e.castillo`, `j.quispe`, `m.flores`, etc. (ver `reset_and_seed_demo_data.sql`)
     -   **Clave:** `Ejecutivo2026!` (para todos los ejecutivos demo)
 
-## Documentación API (Swagger UI)
-
-El backend expone automáticamente la documentación de su API RESTful a través de Swagger UI. Una vez que el backend esté en ejecución, puedes acceder a ella en:
-
-`http://localhost:8080/swagger-ui.html`
-
-Aquí podrás explorar todos los endpoints disponibles, sus modelos de datos y probar las peticiones directamente desde el navegador.
