@@ -1,0 +1,36 @@
+server:
+  port: ${BACKEND_PORT:8080}
+  servlet:
+    context-path: /api
+
+spring:
+  application:
+    name: autofinpe-backend
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3307/autofinpe?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Lima}
+    username: ${SPRING_DATASOURCE_USERNAME:autofinpe_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:autofinpe_password}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    database-platform: org.hibernate.dialect.MySQLDialect
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: America/Lima
+
+logging:
+  level:
+    org.hibernate.SQL: warn
+
+spring.servlet.multipart:
+  max-file-size: 5MB
+  max-request-size: 5MB
+
+security:
+  jwt:
+    secret: ${JWT_SECRET:AutoFinPeLocalDevelopmentJwtSecretKey2026ChangeMe}
+    expiration-minutes: ${JWT_EXPIRATION_MINUTES:120}

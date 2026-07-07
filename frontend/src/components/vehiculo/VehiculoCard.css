@@ -1,0 +1,152 @@
+.vehiculo-card {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #d8e0e8;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 18px 38px rgb(23 32 51 / 8%);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.vehiculo-card:hover {
+  border-color: #9fc7c9;
+  box-shadow: 0 28px 60px rgb(15 94 110 / 14%);
+  transform: translateY(-4px);
+}
+
+.vehiculo-card-image-container {
+  aspect-ratio: 16 / 10;
+  position: relative;
+  overflow: hidden;
+  background: #edf4f7;
+}
+
+.vehiculo-card-image-container::after {
+  position: absolute;
+  inset: auto 0 0;
+  height: 58%;
+  background:
+    linear-gradient(180deg, rgb(23 32 51 / 0%), rgb(23 32 51 / 46%)),
+    linear-gradient(90deg, rgb(15 94 110 / 20%), transparent);
+  content: "";
+  pointer-events: none;
+}
+
+.vehiculo-card-image-container img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  transform: scale(1.01);
+  transition: transform 260ms ease;
+}
+
+.vehiculo-card:hover .vehiculo-card-image-container img {
+  transform: scale(1.055);
+}
+
+.vehiculo-card-content {
+  display: flex;
+  min-height: 210px;
+  flex: 1;
+  flex-direction: column;
+  gap: 14px;
+  padding: 17px;
+}
+
+.vehiculo-card-content header {
+  display: grid;
+  gap: 6px;
+}
+
+.vehiculo-card-category {
+  width: fit-content;
+  border: 1px solid #c9e9df;
+  border-radius: 999px;
+  padding: 5px 9px;
+  color: #0f5e6e;
+  background: #e8f7f4;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.vehiculo-card-title {
+  margin: 0;
+  color: #102033;
+  font-size: 1.08rem;
+  line-height: 1.25;
+}
+
+.vehiculo-card-year {
+  margin: 0;
+  color: #62748a;
+  font-size: 0.9rem;
+}
+
+.vehiculo-card-prices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.vehiculo-card-prices p {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  border: 1px solid #e2eaf0;
+  border-radius: 8px;
+  padding: 10px;
+  color: #102033;
+  background:
+    linear-gradient(180deg, #ffffff, #f8fafc);
+  font-weight: 800;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.vehiculo-card:hover .vehiculo-card-prices p {
+  border-color: #cfe2e6;
+  background: #f4fbfa;
+}
+
+.vehiculo-card-prices .price-label {
+  display: block;
+  margin-right: 0;
+  color: #62748a;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.vehiculo-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: auto;
+}
+
+@media (max-width: 520px) {
+  .vehiculo-card-content {
+    min-height: auto;
+    padding: 15px;
+  }
+
+  .vehiculo-card-prices {
+    grid-template-columns: 1fr;
+  }
+
+  .vehiculo-card-actions {
+    justify-content: stretch;
+  }
+
+  .vehiculo-card-actions button {
+    flex: 1;
+  }
+}

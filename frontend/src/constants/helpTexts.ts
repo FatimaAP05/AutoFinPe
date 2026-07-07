@@ -1,0 +1,27 @@
+export const helpTexts = {
+  tea: 'Tasa efectiva anual. Resume el costo de la tasa en un ano, considerando la capitalizacion.',
+  tcea: 'Costo efectivo anual total. Incluye intereses, seguros, portes y otros cargos del credito.',
+  tir: 'Rentabilidad anual estimada del flujo de pagos. Ayuda a comparar el rendimiento financiero.',
+  van: 'Valor actual neto. Mide el valor presente de los flujos usando el COK como referencia.',
+  cok: 'Costo de oportunidad del capital. Es la rentabilidad minima que esperas para evaluar el credito.',
+  cuotaInicial: 'Pago inicial del vehiculo. Reduce el monto que sera financiado.',
+  cuotaBalon: 'Pago grande al final del credito. Baja las cuotas mensuales, pero deja un saldo final mayor.',
+  plazo: 'Cantidad de meses para pagar el credito. AutoFinPe permite plazos de 12 a 84 meses.',
+  tipoTasa: 'Indica si la tasa ingresada es efectiva o nominal. El sistema la convierte para el calculo.',
+  capitalizacion: 'Frecuencia con la que una tasa nominal acumula intereses durante el ano.',
+  periodoGracia: 'Periodo inicial con pago reducido o sin amortizacion, segun el tipo de gracia elegido.',
+  seguroDesgravamen: 'Seguro que cubre la deuda pendiente ante fallecimiento o invalidez del titular.',
+  seguroVehicular: 'Seguro asociado al vehiculo financiado. Se incorpora al costo del credito.',
+  portes: 'Cargo administrativo mensual incluido en cada cuota.',
+  saldoFinanciado: 'Monto del precio que queda pendiente luego de descontar la cuota inicial.',
+  cuotaUniforme: 'Cuota base del credito antes de sumar seguros, portes u otros cargos.',
+  precioVehiculo: 'Valor del vehiculo que se usara como base para calcular el financiamiento.',
+  moneda: 'Moneda en la que se expresan el precio, las cuotas y los resultados.',
+  configuracion: 'Plantilla que define moneda, tipo de tasa, capitalizacion y gracia por defecto.',
+  vehiculo: 'Unidad seleccionada para tomar el precio base del financiamiento.',
+  cliente: 'Persona a nombre de quien se registrara la operacion.',
+  valorTasa: 'Tasa ingresada para calcular intereses. Su interpretacion depende del tipo de tasa.',
+  categoriaVehiculo: 'Grupo comercial del vehiculo, por ejemplo sedan, SUV, pickup o hatchback.',
+} as const;
+
+export type HelpTextKey = keyof typeof helpTexts;
