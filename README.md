@@ -4,6 +4,27 @@
 
 AutoFinPe es una plataforma integral para la gestión y simulación de créditos vehiculares. Permite a los usuarios administrar vehículos, clientes y configuraciones de crédito, así como simular operaciones de crédito y generar cronogramas de pago. El sistema está diseñado para ser utilizado por ejecutivos de ventas y administradores para facilitar el proceso de financiamiento de vehículos.
 
+## Demo en línea
+| Recurso |	Enlace |
+|---------|--------|
+| 🌐 Aplicación |	[https://feisty-youthfulness-production.up.railway.app/login](https://feisty-youthfulness-production.up.railway.app/login) |
+| 📚 Swagger API |	[https://autofinpe-production.up.railway.app/api/v3/api-doc](https://autofinpe-production.up.railway.app/api/v3/api-doc) |
+| 📄 OpenAPI |	[https://autofinpe-production.up.railway.app/](https://autofinpe-production.up.railway.app/) |
+
+## Credenciales de demostración
+
+**Usuario**
+
+```text
+admin
+```
+
+**Contraseña**
+
+```text
+Admin123!
+```
+
 ## Tecnologías Utilizadas
 
 Este proyecto está construido como un monorepo, compuesto por un backend robusto y un frontend moderno.
