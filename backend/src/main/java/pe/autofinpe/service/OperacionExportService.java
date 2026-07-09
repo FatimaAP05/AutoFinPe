@@ -222,8 +222,7 @@ public class OperacionExportService {
         rowIndex = addSummaryRow(sheet, rowIndex, styles, "Total portes", data.indicador().getTotalPortes(), styles.money());
         addSummaryRow(sheet, rowIndex, styles, "Total pagado", data.indicador().getTotalPagado(), styles.money());
 
-        sheet.autoSizeColumn(0);
-        sheet.autoSizeColumn(1);
+        applyColumnWidths(sheet, 28, 42);
     }
 
     private void crearHojaCronograma(Workbook workbook, WorkbookStyles styles, List<Cronograma> cronograma) {
@@ -253,9 +252,7 @@ public class OperacionExportService {
             addNumericCell(row, 9, cuota.getSaldoFinal(), styles.money());
         }
 
-        for (int index = 0; index < headers.length; index++) {
-            sheet.autoSizeColumn(index);
-        }
+        applyColumnWidths(sheet, 10, 18, 14, 16, 22, 20, 12, 16, 16, 16);
     }
 
     private WorkbookStyles createWorkbookStyles(Workbook workbook) {
@@ -311,6 +308,12 @@ public class OperacionExportService {
         Cell cell = row.createCell(index);
         cell.setCellValue(value);
         cell.setCellStyle(styles.header());
+    }
+
+    private void applyColumnWidths(Sheet sheet, int... widths) {
+        for (int index = 0; index < widths.length; index++) {
+            sheet.setColumnWidth(index, widths[index] * 256);
+        }
     }
 
     private void addNumericCell(Row row, int index, Number value, CellStyle style) {
