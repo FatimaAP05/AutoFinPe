@@ -12,17 +12,12 @@ import com.lowagie.text.pdf.PdfWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.CellStyle;
-import org.apache.poi.ss.usermodel.DataFormat;
-import org.apache.poi.ss.usermodel.Font;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.autofinpe.dto.exportacion.ArchivoExportado;
@@ -43,6 +38,11 @@ public class OperacionExportService {
     private static final String PDF_CONTENT_TYPE = "application/pdf";
     private static final String EXCEL_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    private static final int EXCEL_STYLE_TITLE = 1;
+    private static final int EXCEL_STYLE_HEADER = 2;
+    private static final int EXCEL_STYLE_MONEY = 3;
+    private static final int EXCEL_STYLE_PERCENT = 4;
+    private static final int EXCEL_STYLE_INTEGER = 5;
 
     private final OperacionRepository operacionRepository;
     private final CronogramaRepository cronogramaRepository;
@@ -153,17 +153,11 @@ public class OperacionExportService {
     public ArchivoExportado exportarExcel(Integer idOperacion) {
         ExportData data = cargarDatos(idOperacion);
 
-        try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-            WorkbookStyles styles = createWorkbookStyles(workbook);
-            crearHojaResumen(workbook, styles, data);
-            crearHojaCronograma(workbook, styles, data.cronograma());
-
-            workbook.write(outputStream);
-
+        try {
             return new ArchivoExportado(
                     "autofinpe-operacion-" + idOperacion + ".xlsx",
                     EXCEL_CONTENT_TYPE,
-                    outputStream.toByteArray()
+                    crearExcelXlsx(data)
             );
         } catch (IOException exception) {
             throw new BusinessException("No se pudo generar el Excel de la operacion");
@@ -187,139 +181,252 @@ public class OperacionExportService {
         return new ExportData(operacion, indicador, cronograma);
     }
 
-    private void crearHojaResumen(Workbook workbook, WorkbookStyles styles, ExportData data) {
-        Sheet sheet = workbook.createSheet("Resumen");
-        int rowIndex = 0;
-
-        Row titleRow = sheet.createRow(rowIndex++);
-        Cell titleCell = titleRow.createCell(0);
-        titleCell.setCellValue("AutoFinPe - Resumen de operacion");
-        titleCell.setCellStyle(styles.title());
-
-        rowIndex++;
-        rowIndex = addSummaryRow(sheet, rowIndex, styles, "Fecha de generacion", LocalDateTime.now().format(DATE_FORMAT));
-        rowIndex = addSummaryRow(sheet, rowIndex, styles, "Operacion", data.operacion().getIdOperacion());
-        rowIndex = addSummaryRow(sheet, rowIndex, styles, "Cliente", nombreCliente(data.operacion()));
-        rowIndex = addSummaryRow(sheet, rowIndex, styles, "Vehiculo", descripcionVehiculo(data.operacion().getVehiculo()));
-        rowIndex = addSummaryRow(sheet, rowIndex, styles, "Moneda", data.operacion().getConfiguracion().getMoneda());
-        rowIndex = addSummaryRow(sheet, rowIndex, styles, "Plazo", data.operacion().getPlazo());
-        rowIndex = addSummaryRow(sheet, rowIndex, styles, "Tasa", data.operacion().getValorTasa(), styles.percent());
-        rowIndex = addSummaryRow(sheet, rowIndex, styles, "Tipo de tasa", tipoTasa(data.operacion().getConfiguracion()));
-        rowIndex = addSummaryRow(sheet, rowIndex, styles, "Capitalizacion", data.operacion().getConfiguracion().getCapitalizacion());
-        rowIndex = addSummaryRow(sheet, rowIndex, styles, "Gracia", tipoGracia(data.operacion().getConfiguracion()));
-
-        rowIndex++;
-        Row header = sheet.createRow(rowIndex++);
-        addHeaderCell(header, 0, styles, "Indicador");
-        addHeaderCell(header, 1, styles, "Valor");
-
-        rowIndex = addSummaryRow(sheet, rowIndex, styles, "VAN", data.indicador().getVan(), styles.money());
-        rowIndex = addSummaryRow(sheet, rowIndex, styles, "TIR", data.indicador().getTir(), styles.percent());
-        rowIndex = addSummaryRow(sheet, rowIndex, styles, "TCEA", data.indicador().getTcea(), styles.percent());
-        rowIndex = addSummaryRow(sheet, rowIndex, styles, "Total intereses", data.indicador().getTotalIntereses(), styles.money());
-        rowIndex = addSummaryRow(sheet, rowIndex, styles, "Total amortizacion", data.indicador().getTotalAmortizacion(), styles.money());
-        rowIndex = addSummaryRow(sheet, rowIndex, styles, "Total seguros", data.indicador().getTotalSeguros(), styles.money());
-        rowIndex = addSummaryRow(sheet, rowIndex, styles, "Total portes", data.indicador().getTotalPortes(), styles.money());
-        addSummaryRow(sheet, rowIndex, styles, "Total pagado", data.indicador().getTotalPagado(), styles.money());
-
-        applyColumnWidths(sheet, 28, 42);
+    private byte[] crearExcelXlsx(ExportData data) throws IOException {
+        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+                ZipOutputStream zip = new ZipOutputStream(outputStream, StandardCharsets.UTF_8)) {
+            addZipEntry(zip, "[Content_Types].xml", contentTypesXml());
+            addZipEntry(zip, "_rels/.rels", rootRelsXml());
+            addZipEntry(zip, "xl/workbook.xml", workbookXml());
+            addZipEntry(zip, "xl/_rels/workbook.xml.rels", workbookRelsXml());
+            addZipEntry(zip, "xl/styles.xml", stylesXml());
+            addZipEntry(zip, "xl/worksheets/sheet1.xml", crearHojaResumenXml(data));
+            addZipEntry(zip, "xl/worksheets/sheet2.xml", crearHojaCronogramaXml(data.cronograma()));
+            zip.finish();
+            return outputStream.toByteArray();
+        }
     }
 
-    private void crearHojaCronograma(Workbook workbook, WorkbookStyles styles, List<Cronograma> cronograma) {
-        Sheet sheet = workbook.createSheet("Cronograma");
-        Row header = sheet.createRow(0);
-        String[] headers = {
-                "Nro", "Saldo inicial", "Interes", "Amortizacion", "Seguro desgravamen",
-                "Seguro vehicular", "Portes", "Cuota credito", "Cuota total", "Saldo final"
-        };
-
-        for (int index = 0; index < headers.length; index++) {
-            addHeaderCell(header, index, styles, headers[index]);
-        }
+    private String crearHojaResumenXml(ExportData data) {
+        StringBuilder sheet = new StringBuilder();
+        appendSheetStart(sheet, 28, 42);
 
         int rowIndex = 1;
+        appendTextRow(sheet, rowIndex++, EXCEL_STYLE_TITLE, "AutoFinPe - Resumen de operacion");
+        rowIndex++;
+        rowIndex = appendSummaryTextRow(sheet, rowIndex, "Fecha de generacion", LocalDateTime.now().format(DATE_FORMAT));
+        rowIndex = appendSummaryNumberRow(sheet, rowIndex, "Operacion", data.operacion().getIdOperacion(), EXCEL_STYLE_INTEGER);
+        rowIndex = appendSummaryTextRow(sheet, rowIndex, "Cliente", nombreCliente(data.operacion()));
+        rowIndex = appendSummaryTextRow(sheet, rowIndex, "Vehiculo", descripcionVehiculo(data.operacion().getVehiculo()));
+        rowIndex = appendSummaryTextRow(sheet, rowIndex, "Moneda", data.operacion().getConfiguracion().getMoneda());
+        rowIndex = appendSummaryNumberRow(sheet, rowIndex, "Plazo", data.operacion().getPlazo(), EXCEL_STYLE_INTEGER);
+        rowIndex = appendSummaryNumberRow(sheet, rowIndex, "Tasa", data.operacion().getValorTasa(), EXCEL_STYLE_PERCENT);
+        rowIndex = appendSummaryTextRow(sheet, rowIndex, "Tipo de tasa", tipoTasa(data.operacion().getConfiguracion()));
+        rowIndex = appendSummaryNumberRow(sheet, rowIndex, "Capitalizacion", data.operacion().getConfiguracion().getCapitalizacion(), EXCEL_STYLE_INTEGER);
+        rowIndex = appendSummaryTextRow(sheet, rowIndex, "Gracia", tipoGracia(data.operacion().getConfiguracion()));
+
+        rowIndex++;
+        appendTextRow(sheet, rowIndex++, EXCEL_STYLE_HEADER, "Indicador", "Valor");
+
+        rowIndex = appendSummaryNumberRow(sheet, rowIndex, "VAN", data.indicador().getVan(), EXCEL_STYLE_MONEY);
+        rowIndex = appendSummaryNumberRow(sheet, rowIndex, "TIR", data.indicador().getTir(), EXCEL_STYLE_PERCENT);
+        rowIndex = appendSummaryNumberRow(sheet, rowIndex, "TCEA", data.indicador().getTcea(), EXCEL_STYLE_PERCENT);
+        rowIndex = appendSummaryNumberRow(sheet, rowIndex, "Total intereses", data.indicador().getTotalIntereses(), EXCEL_STYLE_MONEY);
+        rowIndex = appendSummaryNumberRow(sheet, rowIndex, "Total amortizacion", data.indicador().getTotalAmortizacion(), EXCEL_STYLE_MONEY);
+        rowIndex = appendSummaryNumberRow(sheet, rowIndex, "Total seguros", data.indicador().getTotalSeguros(), EXCEL_STYLE_MONEY);
+        rowIndex = appendSummaryNumberRow(sheet, rowIndex, "Total portes", data.indicador().getTotalPortes(), EXCEL_STYLE_MONEY);
+        appendSummaryNumberRow(sheet, rowIndex, "Total pagado", data.indicador().getTotalPagado(), EXCEL_STYLE_MONEY);
+
+        appendSheetEnd(sheet);
+        return sheet.toString();
+    }
+
+    private String crearHojaCronogramaXml(List<Cronograma> cronograma) {
+        StringBuilder sheet = new StringBuilder();
+        appendSheetStart(sheet, 10, 18, 14, 16, 22, 20, 12, 16, 16, 16);
+        appendTextRow(sheet, 1, EXCEL_STYLE_HEADER,
+                "Nro", "Saldo inicial", "Interes", "Amortizacion", "Seguro desgravamen",
+                "Seguro vehicular", "Portes", "Cuota credito", "Cuota total", "Saldo final"
+        );
+
+        int rowIndex = 2;
         for (Cronograma cuota : cronograma) {
-            Row row = sheet.createRow(rowIndex++);
-            addNumericCell(row, 0, cuota.getNroCuota(), styles.integer());
-            addNumericCell(row, 1, cuota.getSaldoInicial(), styles.money());
-            addNumericCell(row, 2, cuota.getInteres(), styles.money());
-            addNumericCell(row, 3, cuota.getAmortizacion(), styles.money());
-            addNumericCell(row, 4, cuota.getSeguroDesgrav(), styles.money());
-            addNumericCell(row, 5, cuota.getSeguroVehic(), styles.money());
-            addNumericCell(row, 6, cuota.getPortes(), styles.money());
-            addNumericCell(row, 7, cuota.getCuotaCredito(), styles.money());
-            addNumericCell(row, 8, cuota.getCuotaTotal(), styles.money());
-            addNumericCell(row, 9, cuota.getSaldoFinal(), styles.money());
+            sheet.append("<row r=\"").append(rowIndex).append("\">");
+            appendNumberCell(sheet, 0, rowIndex, cuota.getNroCuota(), EXCEL_STYLE_INTEGER);
+            appendNumberCell(sheet, 1, rowIndex, cuota.getSaldoInicial(), EXCEL_STYLE_MONEY);
+            appendNumberCell(sheet, 2, rowIndex, cuota.getInteres(), EXCEL_STYLE_MONEY);
+            appendNumberCell(sheet, 3, rowIndex, cuota.getAmortizacion(), EXCEL_STYLE_MONEY);
+            appendNumberCell(sheet, 4, rowIndex, cuota.getSeguroDesgrav(), EXCEL_STYLE_MONEY);
+            appendNumberCell(sheet, 5, rowIndex, cuota.getSeguroVehic(), EXCEL_STYLE_MONEY);
+            appendNumberCell(sheet, 6, rowIndex, cuota.getPortes(), EXCEL_STYLE_MONEY);
+            appendNumberCell(sheet, 7, rowIndex, cuota.getCuotaCredito(), EXCEL_STYLE_MONEY);
+            appendNumberCell(sheet, 8, rowIndex, cuota.getCuotaTotal(), EXCEL_STYLE_MONEY);
+            appendNumberCell(sheet, 9, rowIndex, cuota.getSaldoFinal(), EXCEL_STYLE_MONEY);
+            sheet.append("</row>");
+            rowIndex++;
         }
 
-        applyColumnWidths(sheet, 10, 18, 14, 16, 22, 20, 12, 16, 16, 16);
+        appendSheetEnd(sheet);
+        return sheet.toString();
     }
 
-    private WorkbookStyles createWorkbookStyles(Workbook workbook) {
-        Font titleFont = workbook.createFont();
-        titleFont.setBold(true);
-        titleFont.setFontHeightInPoints((short) 14);
-
-        CellStyle titleStyle = workbook.createCellStyle();
-        titleStyle.setFont(titleFont);
-
-        Font headerFont = workbook.createFont();
-        headerFont.setBold(true);
-
-        CellStyle headerStyle = workbook.createCellStyle();
-        headerStyle.setFont(headerFont);
-
-        DataFormat dataFormat = workbook.createDataFormat();
-
-        CellStyle moneyStyle = workbook.createCellStyle();
-        moneyStyle.setDataFormat(dataFormat.getFormat("#,##0.00"));
-
-        CellStyle percentStyle = workbook.createCellStyle();
-        percentStyle.setDataFormat(dataFormat.getFormat("0.0000"));
-
-        CellStyle integerStyle = workbook.createCellStyle();
-        integerStyle.setDataFormat(dataFormat.getFormat("0"));
-
-        return new WorkbookStyles(titleStyle, headerStyle, moneyStyle, percentStyle, integerStyle);
-    }
-
-    private int addSummaryRow(Sheet sheet, int rowIndex, WorkbookStyles styles, String label, String value) {
-        Row row = sheet.createRow(rowIndex);
-        addHeaderCell(row, 0, styles, label);
-        row.createCell(1).setCellValue(value);
+    private int appendSummaryTextRow(StringBuilder sheet, int rowIndex, String label, String value) {
+        sheet.append("<row r=\"").append(rowIndex).append("\">");
+        appendTextCell(sheet, 0, rowIndex, label, EXCEL_STYLE_HEADER);
+        appendTextCell(sheet, 1, rowIndex, value, 0);
+        sheet.append("</row>");
         return rowIndex + 1;
     }
 
-    private int addSummaryRow(Sheet sheet, int rowIndex, WorkbookStyles styles, String label, Number value) {
-        Row row = sheet.createRow(rowIndex);
-        addHeaderCell(row, 0, styles, label);
-        addNumericCell(row, 1, value, styles.integer());
+    private int appendSummaryNumberRow(StringBuilder sheet, int rowIndex, String label, Number value, int styleIndex) {
+        sheet.append("<row r=\"").append(rowIndex).append("\">");
+        appendTextCell(sheet, 0, rowIndex, label, EXCEL_STYLE_HEADER);
+        appendNumberCell(sheet, 1, rowIndex, value, styleIndex);
+        sheet.append("</row>");
         return rowIndex + 1;
     }
 
-    private int addSummaryRow(Sheet sheet, int rowIndex, WorkbookStyles styles, String label, BigDecimal value, CellStyle style) {
-        Row row = sheet.createRow(rowIndex);
-        addHeaderCell(row, 0, styles, label);
-        addNumericCell(row, 1, value, style);
-        return rowIndex + 1;
-    }
-
-    private void addHeaderCell(Row row, int index, WorkbookStyles styles, String value) {
-        Cell cell = row.createCell(index);
-        cell.setCellValue(value);
-        cell.setCellStyle(styles.header());
-    }
-
-    private void applyColumnWidths(Sheet sheet, int... widths) {
-        for (int index = 0; index < widths.length; index++) {
-            sheet.setColumnWidth(index, widths[index] * 256);
+    private void appendTextRow(StringBuilder sheet, int rowIndex, int styleIndex, String... values) {
+        sheet.append("<row r=\"").append(rowIndex).append("\">");
+        for (int index = 0; index < values.length; index++) {
+            appendTextCell(sheet, index, rowIndex, values[index], styleIndex);
         }
+        sheet.append("</row>");
     }
 
-    private void addNumericCell(Row row, int index, Number value, CellStyle style) {
-        Cell cell = row.createCell(index);
-        cell.setCellValue(value.doubleValue());
-        cell.setCellStyle(style);
+    private void appendTextCell(StringBuilder sheet, int columnIndex, int rowIndex, String value, int styleIndex) {
+        sheet.append("<c r=\"").append(cellReference(columnIndex, rowIndex)).append("\"");
+        if (styleIndex > 0) {
+            sheet.append(" s=\"").append(styleIndex).append("\"");
+        }
+        sheet.append(" t=\"inlineStr\"><is><t>").append(escapeXml(value)).append("</t></is></c>");
+    }
+
+    private void appendNumberCell(StringBuilder sheet, int columnIndex, int rowIndex, Number value, int styleIndex) {
+        sheet.append("<c r=\"").append(cellReference(columnIndex, rowIndex)).append("\" s=\"")
+                .append(styleIndex).append("\"><v>").append(numberValue(value)).append("</v></c>");
+    }
+
+    private void appendSheetStart(StringBuilder sheet, int... columnWidths) {
+        sheet.append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>")
+                .append("<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\">")
+                .append("<cols>");
+        for (int index = 0; index < columnWidths.length; index++) {
+            int column = index + 1;
+            sheet.append("<col min=\"").append(column).append("\" max=\"").append(column)
+                    .append("\" width=\"").append(columnWidths[index]).append("\" customWidth=\"1\"/>");
+        }
+        sheet.append("</cols><sheetData>");
+    }
+
+    private void appendSheetEnd(StringBuilder sheet) {
+        sheet.append("</sheetData></worksheet>");
+    }
+
+    private void addZipEntry(ZipOutputStream zip, String name, String content) throws IOException {
+        zip.putNextEntry(new ZipEntry(name));
+        zip.write(content.getBytes(StandardCharsets.UTF_8));
+        zip.closeEntry();
+    }
+
+    private String cellReference(int columnIndex, int rowIndex) {
+        return columnName(columnIndex) + rowIndex;
+    }
+
+    private String columnName(int columnIndex) {
+        StringBuilder name = new StringBuilder();
+        int value = columnIndex + 1;
+        while (value > 0) {
+            int remainder = (value - 1) % 26;
+            name.insert(0, (char) ('A' + remainder));
+            value = (value - 1) / 26;
+        }
+        return name.toString();
+    }
+
+    private String numberValue(Number value) {
+        if (value instanceof BigDecimal bigDecimal) {
+            return bigDecimal.toPlainString();
+        }
+        return value.toString();
+    }
+
+    private String escapeXml(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&apos;");
+    }
+
+    private String contentTypesXml() {
+        return """
+                <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+                <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+                  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+                  <Default Extension="xml" ContentType="application/xml"/>
+                  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+                  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+                  <Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+                  <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+                </Types>
+                """;
+    }
+
+    private String rootRelsXml() {
+        return """
+                <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+                <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+                  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+                </Relationships>
+                """;
+    }
+
+    private String workbookXml() {
+        return """
+                <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+                <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+                  <sheets>
+                    <sheet name="Resumen" sheetId="1" r:id="rId1"/>
+                    <sheet name="Cronograma" sheetId="2" r:id="rId2"/>
+                  </sheets>
+                </workbook>
+                """;
+    }
+
+    private String workbookRelsXml() {
+        return """
+                <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+                <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+                  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+                  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/>
+                  <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+                </Relationships>
+                """;
+    }
+
+    private String stylesXml() {
+        return """
+                <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+                <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+                  <numFmts count="2">
+                    <numFmt numFmtId="164" formatCode="#,##0.00"/>
+                    <numFmt numFmtId="165" formatCode="0.0000"/>
+                  </numFmts>
+                  <fonts count="2">
+                    <font><sz val="11"/><name val="Calibri"/></font>
+                    <font><b/><sz val="11"/><name val="Calibri"/></font>
+                  </fonts>
+                  <fills count="2">
+                    <fill><patternFill patternType="none"/></fill>
+                    <fill><patternFill patternType="gray125"/></fill>
+                  </fills>
+                  <borders count="1"><border/></borders>
+                  <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+                  <cellXfs count="6">
+                    <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
+                    <xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>
+                    <xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>
+                    <xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
+                    <xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
+                    <xf numFmtId="1" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
+                  </cellXfs>
+                  <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+                </styleSheet>
+                """;
     }
 
     private void addPdfHeader(PdfPTable table, com.lowagie.text.Font font, String... headers) {
@@ -369,14 +476,5 @@ public class OperacionExportService {
     }
 
     private record ExportData(Operacion operacion, Indicador indicador, List<Cronograma> cronograma) {
-    }
-
-    private record WorkbookStyles(
-            CellStyle title,
-            CellStyle header,
-            CellStyle money,
-            CellStyle percent,
-            CellStyle integer
-    ) {
     }
 }
