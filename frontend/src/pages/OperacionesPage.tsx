@@ -12,7 +12,6 @@ import { listarClientes } from '../services/clienteService';
 import { listarConfiguraciones } from '../services/configuracionService';
 import {
   crearOperacion,
-  descargarOperacionExcel,
   descargarOperacionPdf,
   listarOperaciones,
   obtenerCronograma,
@@ -149,21 +148,18 @@ export function OperacionesPage() {
     setOperaciones(await listarOperaciones(token));
   }
 
-  async function handleDownload(idOperacion: number, format: 'pdf' | 'excel') {
+  async function handleDownloadPdf(idOperacion: number) {
     if (!token) {
       return;
     }
 
-    const key = `${idOperacion}-${format}`;
+    const key = `${idOperacion}-pdf`;
     setDownloadingKey(key);
     setError(null);
 
     try {
-      const blob = format === 'pdf'
-        ? await descargarOperacionPdf(token, idOperacion)
-        : await descargarOperacionExcel(token, idOperacion);
-      const extension = format === 'pdf' ? 'pdf' : 'xlsx';
-      downloadBlob(blob, `autofinpe-operacion-${idOperacion}.${extension}`);
+      const blob = await descargarOperacionPdf(token, idOperacion);
+      downloadBlob(blob, `autofinpe-operacion-${idOperacion}.pdf`);
     } catch (exception) {
       setError(toErrorMessage(exception));
     } finally {
@@ -448,17 +444,9 @@ export function OperacionesPage() {
                   className="secondary-button"
                   type="button"
                   disabled={downloadingKey === `${operacion.idOperacion}-pdf`}
-                  onClick={() => void handleDownload(operacion.idOperacion, 'pdf')}
+                  onClick={() => void handleDownloadPdf(operacion.idOperacion)}
                 >
                   {downloadingKey === `${operacion.idOperacion}-pdf` ? 'Descargando...' : 'Descargar PDF'}
-                </button>
-                <button
-                  className="secondary-button"
-                  type="button"
-                  disabled={downloadingKey === `${operacion.idOperacion}-excel`}
-                  onClick={() => void handleDownload(operacion.idOperacion, 'excel')}
-                >
-                  {downloadingKey === `${operacion.idOperacion}-excel` ? 'Descargando...' : 'Descargar Excel'}
                 </button>
               </div>
 
@@ -574,17 +562,9 @@ export function OperacionesPage() {
                           className="secondary-button"
                           type="button"
                           disabled={downloadingKey === `${item.idOperacion}-pdf`}
-                          onClick={() => void handleDownload(item.idOperacion, 'pdf')}
+                          onClick={() => void handleDownloadPdf(item.idOperacion)}
                         >
                           PDF
-                        </button>
-                        <button
-                          className="secondary-button"
-                          type="button"
-                          disabled={downloadingKey === `${item.idOperacion}-excel`}
-                          onClick={() => void handleDownload(item.idOperacion, 'excel')}
-                        >
-                          Excel
                         </button>
                       </div>
                     </td>
